@@ -14,7 +14,7 @@ using static Google.Apis.Gmail.v1.UsersResource.MessagesResource.GetRequest;
 
 namespace Realmar.ScooterExpenseAggregator
 {
-    public class GmailMailSource : IMailDataSource
+    public class GmailMailSource : IMailDataSource, IAsyncInitializable
     {
         private GmailService _client;
 
@@ -43,6 +43,7 @@ namespace Realmar.ScooterExpenseAggregator
 
         public async IAsyncEnumerable<string> EnumerateMailsAsync(string address)
         {
+            address = "anastassios.martakos@outlook.com";
             string nextPageToken = null;
             do
             {

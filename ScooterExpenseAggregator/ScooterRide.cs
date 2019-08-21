@@ -12,7 +12,7 @@ namespace Realmar.ScooterExpenseAggregator
         /// <inheritdoc />
         public override string ToString()
         {
-            return $"Distance: {Distance}m Price: {Price} Time: {Time}s";
+            return $"Price: {Price} Distance: {Distance} Time: {Time}";
         }
 
         public static ScooterRide operator +(ScooterRide a) => a;

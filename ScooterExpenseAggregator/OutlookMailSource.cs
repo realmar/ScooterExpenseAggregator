@@ -6,7 +6,7 @@ using Microsoft.Identity.Client;
 
 namespace Realmar.ScooterExpenseAggregator
 {
-    public class OutlookMailSource : IMailDataSource
+    public class OutlookMailSource : IMailDataSource, IAsyncInitializable
     {
         private IGraphServiceClient _client;
 
