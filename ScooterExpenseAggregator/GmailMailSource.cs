@@ -67,7 +67,7 @@ namespace Realmar.ScooterExpenseAggregator
                 {
                     foreach (var message in result.Messages)
                     {
-                        _logger.Debug($"Reading message {message.Id}");
+                        _logger.Debug($"Reading message {address} {message.Id}");
 
                         var getRequest = _client.Users.Messages
                             .Get("me", message.Id);

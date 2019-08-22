@@ -46,20 +46,23 @@ namespace Realmar.ScooterExpenseAggregator
                 .Filter($"from/emailAddress/address eq '{address}'")
                 .GetAsync()
                 .ConfigureAwait(false);
+            IUserMessagesCollectionRequest nextPageRequest = null;
 
             do
             {
+                nextPageRequest = messages.NextPageRequest;
                 foreach (var message in messages)
                 {
-                    _logger.Debug($"Reading message {message.Id}");
+                    _logger.Debug(
+                        $"Reading message from {message.ReceivedDateTime:R} {message.From.EmailAddress.Address} {message.Id}");
                     yield return message.Body.Content;
                 }
 
-                if (messages.NextPageRequest != null)
+                if (nextPageRequest != null)
                 {
-                    messages = await messages.NextPageRequest.GetAsync().ConfigureAwait(false);
+                    messages = await nextPageRequest.GetAsync().ConfigureAwait(false);
                 }
-            } while (messages.NextPageRequest != null);
+            } while (nextPageRequest != null);
         }
     }
 }
