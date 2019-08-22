@@ -1,11 +1,14 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using NLog;
 
 namespace Realmar.ScooterExpenseAggregator
 {
     public class ScooterAggregator
     {
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
+
         private readonly Dictionary<IScooterCompany, ScooterRide> _rides =
             new Dictionary<IScooterCompany, ScooterRide>();
 
@@ -28,6 +31,7 @@ namespace Realmar.ScooterExpenseAggregator
 
             foreach (var company in _companies)
             {
+                _logger.Info($"Getting rides for {company.Name}");
                 var aggregate = new ScooterRide();
                 await foreach (var ride in company.EnumerateRidesAsync())
                 {

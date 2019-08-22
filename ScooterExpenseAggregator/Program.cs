@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Configuration;
+using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using NLog;
 
 namespace Realmar.ScooterExpenseAggregator
@@ -11,20 +12,17 @@ namespace Realmar.ScooterExpenseAggregator
 
         private static async Task Main()
         {
+            LogManager.LoadConfiguration("NLog.config");
+            _logger = LogManager.GetCurrentClassLogger();
+
             try
             {
-                LogManager.LoadConfiguration("NLog.config");
-                _logger = LogManager.GetCurrentClassLogger();
-
-                try
-                {
-                    await RunApplication().ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    _logger.Error(e);
-                    throw;
-                }
+                await RunApplication().ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e);
+                throw;
             }
             finally
             {
@@ -34,9 +32,7 @@ namespace Realmar.ScooterExpenseAggregator
 
         private static async Task RunApplication()
         {
-            var settings = ConfigurationManager.AppSettings;
-            var sourceName = settings["Source"];
-            var dataSource = await MailSourceFactory.Create(sourceName).ConfigureAwait(false);
+            var dataSource = await MailSourceFactory.Create(GetMailSourceName()).ConfigureAwait(false);
             var companies = new IScooterCompany[]
             {
                 new CircCompany(dataSource),
@@ -64,6 +60,16 @@ namespace Realmar.ScooterExpenseAggregator
                 Console.WriteLine(ride.ToString());
                 Console.WriteLine();
             }
+        }
+
+        private static string GetMailSourceName()
+        {
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json")
+                .Build();
+
+            return configuration["Source"];
         }
     }
 }

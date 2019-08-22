@@ -21,7 +21,7 @@ namespace Realmar.ScooterExpenseAggregator
                 throw new ArgumentException($"Cannot find mail data provider with name {sourceName}", sourceName);
             }
 
-            _logger.Info($"Creating mail data source {sourceName}");
+            _logger.Info($"Using mail data source {sourceName}");
             var source = Activator.CreateInstance(sourceType);
             if (source is IAsyncInitializable initializable)
             {
