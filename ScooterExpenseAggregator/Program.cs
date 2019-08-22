@@ -1,14 +1,44 @@
 ﻿using System;
 using System.Configuration;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
+using NLog;
 
 namespace Realmar.ScooterExpenseAggregator
 {
     internal class Program
     {
+        private static Logger _logger;
+
         private static async Task Main()
         {
-            var dataSource = await CreateMailDataSourceAsync().ConfigureAwait(false);
+            try
+            {
+                LogManager.LoadConfiguration("NLog.config");
+                _logger = LogManager.GetCurrentClassLogger();
+
+                try
+                {
+                    await RunApplication().ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    _logger.Error(e);
+                    throw;
+                }
+            }
+            finally
+            {
+                LogManager.Shutdown();
+            }
+        }
+
+        private static async Task RunApplication()
+        {
+            var settings = ConfigurationManager.AppSettings;
+            var sourceName = settings["Source"];
+            var dataSource = await CreateMailDataSourceAsync(sourceName).ConfigureAwait(false);
             var companies = new IScooterCompany[]
             {
                 new CircCompany(dataSource),
@@ -35,19 +65,25 @@ namespace Realmar.ScooterExpenseAggregator
             }
         }
 
-        private static async Task<IMailDataSource> CreateMailDataSourceAsync()
+        private static async Task<IMailDataSource> CreateMailDataSourceAsync(string sourceName)
         {
-            var settings = ConfigurationManager.AppSettings;
-            var sourceName = settings["Source"];
+            var sourceType = Assembly.GetExecutingAssembly().GetTypes()
+                .Where(type => typeof(IMailDataSource).IsAssignableFrom(type))
+                .FirstOrDefault(type => type.Name.StartsWith(sourceName, StringComparison.InvariantCultureIgnoreCase));
 
-            var source = sourceName switch
+            if (sourceType == null)
             {
-                "outlook" => (IAsyncInitializable) new OutlookMailSource(),
-                "gmail" => new GmailMailSource(),
-                _ => throw new ArgumentException($"Cannot find provider for {sourceName}")
-            };
+                throw new ArgumentException($"Cannot find mail data provider with name {sourceName}", sourceName);
+            }
 
-            await source.InitializeAsync().ConfigureAwait(false);
+            _logger.Info($"Creating mail data source {sourceName}");
+            var source = Activator.CreateInstance(sourceType);
+            if (source is IAsyncInitializable initializable)
+            {
+                _logger.Debug("Initializing mail data source");
+                await initializable.InitializeAsync().ConfigureAwait(false);
+                _logger.Debug("Mail data source initialized");
+            }
 
             return (IMailDataSource) source;
         }

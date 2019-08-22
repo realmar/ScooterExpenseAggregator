@@ -3,11 +3,13 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Graph;
 using Microsoft.Identity.Client;
+using NLog;
 
 namespace Realmar.ScooterExpenseAggregator
 {
     public class OutlookMailSource : IMailDataSource, IAsyncInitializable
     {
+        private readonly NLog.Logger _logger = LogManager.GetCurrentClassLogger();
         private IGraphServiceClient _client;
 
         public async Task InitializeAsync()
@@ -16,7 +18,6 @@ namespace Realmar.ScooterExpenseAggregator
             // Mail.Read --> Read actual mails
             var appScopes = new[] {"User.Read", "Mail.Read"};
             var appId = "bec1f446-9c59-4b92-9647-a3e872bf2bb2";
-
 
             var clientApplication = PublicClientApplicationBuilder
                 .Create(appId)
@@ -50,6 +51,7 @@ namespace Realmar.ScooterExpenseAggregator
             {
                 foreach (var message in messages)
                 {
+                    _logger.Debug($"Reading message {message.Id}");
                     yield return message.Body.Content;
                 }
 

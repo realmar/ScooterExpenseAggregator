@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using NLog;
 using static Realmar.ScooterExpenseAggregator.DataHelper;
 
 namespace Realmar.ScooterExpenseAggregator
 {
     public class CircCompany : IScooterCompany
     {
+        private readonly Regex _priceRegex = new Regex(@"Bold"">\s+(?<Price>\d+\.\d+)\s", RegexOptions.Compiled);
+
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private readonly IMailDataSource _mailDataSource;
 
         public CircCompany(IMailDataSource mailDataSource)
@@ -29,12 +33,11 @@ namespace Realmar.ScooterExpenseAggregator
                     double distance;
                     double minutes;
                     double seconds;
-                    double price;
 
-                    (distance, end) = Extract(mail, ">\r\nTotal Distance (");
-                    (minutes, end) = Extract(mail, ">\r\nTotal Time (", "m", end);
+                    (distance, end) = Extract(mail, "Total Distance (");
+                    (minutes, end) = Extract(mail, "Total Time (", "m", end);
                     (seconds, end) = Extract(mail, " ", "s", end);
-                    (price, _) = Extract(mail, "direction:ltr; font-weight:Bold\">\r\n", begin: end);
+                    var price = ParseOrDefault(_priceRegex.Match(mail).Groups["Price"].Value);
 
                     end = 0;
 
@@ -47,8 +50,8 @@ namespace Realmar.ScooterExpenseAggregator
                 }
                 catch (Exception e)
                 {
-                    result = default;
-                    Console.WriteLine($"Cannot parse Circ mail: {e}");
+                    _logger.Warn(e, "Cannot parse Circ mail");
+                    continue;
                 }
 
                 yield return result;

@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Runtime.CompilerServices;
 
 namespace Realmar.ScooterExpenseAggregator
 {
     internal static class DataHelper
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (double Value, int EndIndex) Extract(
             string mail,
             string startIdentifier,
@@ -28,6 +26,18 @@ namespace Realmar.ScooterExpenseAggregator
             }
 
             return (value, end);
+        }
+
+        internal static double ParseOrDefault(string number)
+        {
+            if (double.TryParse(number, out var result))
+            {
+                return result;
+            }
+            else
+            {
+                return default;
+            }
         }
     }
 }

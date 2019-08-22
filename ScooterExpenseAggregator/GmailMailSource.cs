@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using Google.Apis.Gmail.v1;
 using Google.Apis.Gmail.v1.Data;
 using Google.Apis.Services;
 using Google.Apis.Util.Store;
+using NLog;
 using ScooterExpenseAggregator.Properties;
 using static Google.Apis.Gmail.v1.UsersResource.MessagesResource.GetRequest;
 
@@ -16,6 +18,9 @@ namespace Realmar.ScooterExpenseAggregator
 {
     public class GmailMailSource : IMailDataSource, IAsyncInitializable
     {
+        private const string NoData = "<strong>Message body was not returned from Google</strong>";
+
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private GmailService _client;
 
         public async Task InitializeAsync()
@@ -43,7 +48,6 @@ namespace Realmar.ScooterExpenseAggregator
 
         public async IAsyncEnumerable<string> EnumerateMailsAsync(string address)
         {
-            address = "anastassios.martakos@outlook.com";
             string nextPageToken = null;
             do
             {
@@ -63,6 +67,8 @@ namespace Realmar.ScooterExpenseAggregator
                 {
                     foreach (var message in result.Messages)
                     {
+                        _logger.Debug($"Reading message {message.Id}");
+
                         var getRequest = _client.Users.Messages
                             .Get("me", message.Id);
                         getRequest.Format = FormatEnum.Full;
@@ -70,16 +76,22 @@ namespace Realmar.ScooterExpenseAggregator
                             .ExecuteAsync()
                             .ConfigureAwait(false);
 
-                        yield return GetBody(actualMessage);
+                        if (ValidMail(actualMessage) == false)
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            yield return GetBody(actualMessage);
+                        }
                     }
                 }
             } while (nextPageToken != null);
         }
 
-        private static string GetBody(Message message)
+        private string GetBody(Message message)
         {
             var sb = new StringBuilder();
-
             foreach (var part in message.Payload.Parts)
             {
                 sb.Append(DecodePart(part));
@@ -88,16 +100,40 @@ namespace Realmar.ScooterExpenseAggregator
             return sb.ToString();
         }
 
-        private static string DecodePart(MessagePart part)
+        private string DecodePart(MessagePart part)
         {
             var input = part.Body.Data;
-            if (string.IsNullOrWhiteSpace(input))
+            var InputStr = input.Replace("-", "+").Replace("_", "/");
+
+            return Encoding.UTF8.GetString(Convert.FromBase64String(InputStr));
+        }
+
+        private bool ValidMail(Message message)
+        {
+            var result = false;
+
+            if (message == null)
             {
-                return "<strong>Message body was not returned from Google</strong>";
+                _logger.Warn("Message is null");
+            }
+            else if (message.Payload == null)
+            {
+                _logger.Warn($"Payload is null {message.Id}");
+            }
+            else if (message.Payload.Parts == null)
+            {
+                _logger.Warn($"Parts are null {message.Id}");
+            }
+            else if (message.Payload.Parts.Any(part => string.IsNullOrWhiteSpace(part.Body.Data)))
+            {
+                _logger.Warn($"Message part is empty {message.Id}");
+            }
+            else
+            {
+                result = true;
             }
 
-            var InputStr = input.Replace("-", "+").Replace("_", "/");
-            return Encoding.UTF8.GetString(Convert.FromBase64String(InputStr));
+            return result;
         }
     }
 }
